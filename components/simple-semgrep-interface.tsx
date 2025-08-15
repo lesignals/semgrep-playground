@@ -129,6 +129,8 @@ const CodeHighlighter = ({ content, highlightedLines, onChange, language }: {
   language?: string;
 }) => {
   const [editor, setEditor] = useState<any>(null)
+  const [decorationIds, setDecorationIds] = useState<string[]>([])
+  const [stylesAdded, setStylesAdded] = useState(false)
   
   // 检测代码语言
   const detectLanguage = (code: string): string => {
@@ -167,26 +169,11 @@ const CodeHighlighter = ({ content, highlightedLines, onChange, language }: {
     setEditor(editorInstance)
   }
 
-  // 更新高亮行装饰
+  // 添加样式（只添加一次）
   useEffect(() => {
-    if (editor && highlightedLines.length > 0) {
-      // 导入 Monaco Editor 的类型
-      import('monaco-editor').then((monaco) => {
-        const decorations = highlightedLines.map(lineNumber => ({
-          range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-          options: {
-            isWholeLine: true,
-            className: 'highlighted-line',
-            glyphMarginClassName: 'highlighted-glyph'
-          }
-        }))
-        
-        // 应用装饰
-        editor.deltaDecorations([], decorations)
-      })
-      
-      // 添加 CSS 样式
+    if (!stylesAdded) {
       const style = document.createElement('style')
+      style.id = 'semgrep-highlight-styles'
       style.textContent = `
         .highlighted-line {
           background-color: rgba(255, 0, 0, 0.1) !important;
@@ -197,11 +184,44 @@ const CodeHighlighter = ({ content, highlightedLines, onChange, language }: {
           width: 4px !important;
         }
       `
-      document.head.appendChild(style)
       
-      return () => {
-        document.head.removeChild(style)
+      // 检查是否已存在样式，避免重复添加
+      const existingStyle = document.getElementById('semgrep-highlight-styles')
+      if (!existingStyle) {
+        document.head.appendChild(style)
       }
+      setStylesAdded(true)
+    }
+  }, [stylesAdded])
+
+  // 更新高亮行装饰
+  useEffect(() => {
+    if (editor) {
+      // 导入 Monaco Editor 的类型
+      import('monaco-editor').then((monaco) => {
+        // 先清除之前的装饰
+        if (decorationIds.length > 0) {
+          editor.deltaDecorations(decorationIds, [])
+        }
+        
+        // 如果有新的高亮行，创建新装饰
+        if (highlightedLines.length > 0) {
+          const decorations = highlightedLines.map(lineNumber => ({
+            range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+            options: {
+              isWholeLine: true,
+              className: 'highlighted-line',
+              glyphMarginClassName: 'highlighted-glyph'
+            }
+          }))
+          
+          // 应用新装饰并保存装饰ID
+          const newDecorationIds = editor.deltaDecorations([], decorations)
+          setDecorationIds(newDecorationIds)
+        } else {
+          setDecorationIds([])
+        }
+      })
     }
   }, [editor, highlightedLines])
 
