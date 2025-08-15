@@ -1,0 +1,26 @@
+rules:
+  - id: java.lang.security.audit.sqli
+    languages:
+      - java
+    severity: ERROR
+    message: "SQL injection vulnerability detected"
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              String $SQL = "..." + $VAR + "...";
+              ...
+              $STMT.executeQuery($SQL);
+          - pattern: |
+              String $SQL = "..." + $VAR + "...";
+              ...
+              $STMT.execute($SQL);
+          - pattern: |
+              $STMT.executeQuery("..." + $VAR + "...");
+          - pattern: |
+              $STMT.execute("..." + $VAR + "...");

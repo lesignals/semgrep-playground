@@ -1,0 +1,35 @@
+# SQL 注入检测规则
+rules:
+  - id: sql-injection-detection
+    languages:
+      - java
+    severity: ERROR
+    message: "潜在的 SQL 注入漏洞：直接拼接用户输入到 SQL 查询中"
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: "CWE-89: SQL 注入"
+      owasp: "A03:2021 - 注入"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              String $SQL = "..." + $USER_INPUT + "...";
+          - pattern: |
+              String $SQL = "..." + $OBJ.getParameter(...) + "...";
+          - pattern: |
+              Statement $STMT = ...;
+              ...
+              $STMT.executeQuery("..." + $VAR + "...");
+          - pattern: |
+              PreparedStatement $STMT = ...;
+              ...
+              $STMT.executeQuery("..." + $VAR + "...");
+    pattern-not:
+      - pattern: |
+          String $SQL = "..." + $SAFE_CONST + "...";
+        where:
+          - metavariable-pattern:
+              metavariable: $SAFE_CONST
+              pattern: |
+                "..."
