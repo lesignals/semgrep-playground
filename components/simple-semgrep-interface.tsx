@@ -199,7 +199,20 @@ const CodeHighlighter = ({ content, highlightedLines, onChange, language }: {
     if (editor) {
       // 导入 Monaco Editor 的类型
       import('monaco-editor').then((monaco) => {
-        // 先清除之前的装饰
+        // 强制清除所有装饰，包括可能遗留的装饰
+        const allDecorations = editor.getModel()?.getAllDecorations() || []
+        const currentDecorationIds = allDecorations
+          .filter(decoration => 
+            decoration.options.className === 'highlighted-line' || 
+            decoration.options.glyphMarginClassName === 'highlighted-glyph'
+          )
+          .map(decoration => decoration.id)
+        
+        if (currentDecorationIds.length > 0) {
+          editor.deltaDecorations(currentDecorationIds, [])
+        }
+        
+        // 也清除我们记录的装饰ID
         if (decorationIds.length > 0) {
           editor.deltaDecorations(decorationIds, [])
         }
@@ -576,6 +589,9 @@ fn safe_function(input: &str) -> String {
   const cancelCreateNewRule = () => {
     setIsCreatingRule(false)
     setNewRuleData({ name: '', category: '', language: 'java' })
+    setHighlightedLines([])
+    setScanResults([])
+    setShowResults(false)
   }
 
   // 保存新规则
@@ -1196,7 +1212,10 @@ safe_config:
 
   const runSemgrep = async () => {
     setIsRunning(true)
-    setHighlightedLines([]) // 清空之前的高亮
+    // 彻底清空之前的状态
+    setHighlightedLines([])
+    setScanResults([])
+    setShowResults(false)
     
     // 检测代码语言 (使用CodeHighlighter组件中的detectLanguage函数)
     const detectLang = (code: string): string => {
